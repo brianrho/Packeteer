@@ -18,7 +18,7 @@ void packeteer_init(packeteer_t * pteer, uint8_t addr, packeteer_send_func sfunc
     pteer->read_state = PACKETEER_STATE_READ_HEADER;
 }
 
-// Writes a single packet
+/* Writes a single packet to the given address */
 uint16_t packeteer_send(packeteer_t * pteer, const void * data, uint16_t len, uint8_t to_addr) {
     if (len == 0 || pteer->sfunc == NULL)               // no zero-length writes allowed
         return PACKETEER_READ_INCOMPLETE;
@@ -48,6 +48,9 @@ uint16_t packeteer_send(packeteer_t * pteer, const void * data, uint16_t len, ui
     return to_write;
 }
 
+/* Receive a single packet, return 0 if packet is too big, PACKETEER_READ_INCOMPLETE if incomplete,
+ * else return the packet length as well as the source and destination addresses
+ */
 int16_t packeteer_recv(packeteer_t * pteer, void * data, uint16_t len, uint8_t * from_addr, uint8_t * to_addr) {
     if (len == 0 || pteer->rfunc == NULL || pteer->afunc == NULL)
         return PACKETEER_READ_INCOMPLETE;
@@ -55,18 +58,27 @@ int16_t packeteer_recv(packeteer_t * pteer, void * data, uint16_t len, uint8_t *
     while (1) {
         switch (pteer->read_state) {
             case PACKETEER_STATE_READ_HEADER:
-                if (pteer->afunc() < 3)
+                if (pteer->afunc() == 0)
                     return PACKETEER_READ_INCOMPLETE;
                 
                 pteer->rfunc(pteer->ibuf, 1);
-                if (pteer->ibuf[0] != PACKETEER_HEADER)
+                if (pteer->ibuf[0] != PACKETEER_HEADER) {
+                    if (pteer->yfunc != NULL) pteer->yfunc();
+                    continue;
+                }
+                
+                pteer->read_state = PACKETEER_STATE_READ_LENGTH;
+                break;
+                
+            case PACKETEER_STATE_READ_LENGTH:
+                if (pteer->afunc() < 2)
                     return PACKETEER_READ_INCOMPLETE;
                 
                 pteer->rfunc(pteer->ibuf, 1);
                 pteer->to_read = pteer->ibuf[0];
-                // check the length, but could miss a header this way
-                if (pteer->to_read > PACKETEER_MAX_PKT_LEN) {
+                if (pteer->to_read > PACKETEER_MAX_PKT_LEN) {          // check the length
                     if (pteer->yfunc != NULL) pteer->yfunc();
+                    pteer->read_state = PACKETEER_STATE_READ_HEADER;
                     continue;
                 }
                 
@@ -194,7 +206,7 @@ int16_t packeteer_recv(packeteer_t * pteer, void * data, uint16_t len) {
                 
                 pteer->read_state = PACKETEER_STATE_READ_HEADER;       // not coming back here again
                 
-                pteer->rfunc(pteer->ibuf, pteer->to_read + 1);                   // could miss a packet this way too
+                pteer->rfunc(pteer->ibuf, pteer->to_read + 1);                   // could miss a packet this way
                 uint8_t chksum = (PACKETEER_HEADER + pteer->to_read) & 0xff;
                 
                 uint8_t * ptr = (uint8_t *)data;
