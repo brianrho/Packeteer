@@ -9,7 +9,7 @@ extern "C" {
 
 #define PACKETEER_MAX_PKT_LEN       32
 
-//#define PACKETEER_ADDRESSING_ENABLED
+#define PACKETEER_ADDRESSING_ENABLED
 
 #define PACKETEER_READ_INCOMPLETE   -1
 
@@ -21,6 +21,7 @@ typedef void (*packeteer_yield_func) (void);
 
 typedef enum {
 	PACKETEER_STATE_READ_HEADER,
+    PACKETEER_STATE_READ_LENGTH,
 	PACKETEER_STATE_READ_CONTENTS,
 } packeteer_state_e;
 
@@ -51,7 +52,7 @@ typedef struct {
     void packeteer_init(packeteer_t * pteer, packeteer_send_func sfunc, 
                         packeteer_recv_func rfunc, packeteer_avail_func afunc);
     uint16_t packeteer_send(packeteer_t * pteer, const void * data, uint16_t len);
-    uint16_t packeteer_recv(packeteer_t * pteer, void * data, uint16_t len);
+    int16_t packeteer_recv(packeteer_t * pteer, void * data, uint16_t len);
 #endif
 
 void packeteer_set_yield_func(packeteer_t * pteer, packeteer_yield_func yfunc);

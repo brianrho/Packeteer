@@ -152,24 +152,34 @@ uint16_t packeteer_send(packeteer_t * pteer, const void * data, uint16_t len) {
     return to_write;
 }
  
-uint16_t packeteer_recv(packeteer_t * pteer, void * data, uint16_t len) {
+int16_t packeteer_recv(packeteer_t * pteer, void * data, uint16_t len) {
     if (len == 0 || pteer->rfunc == NULL)
         return PACKETEER_READ_INCOMPLETE;
     
     while (1) {
         switch (pteer->read_state) {
             case PACKETEER_STATE_READ_HEADER:
-                if (pteer->afunc() < 2)
+                if (pteer->afunc() == 0)
                     return PACKETEER_READ_INCOMPLETE;
                 
                 pteer->rfunc(pteer->ibuf, 1);
-                if (pteer->ibuf[0] != PACKETEER_HEADER)
+                if (pteer->ibuf[0] != PACKETEER_HEADER) {
+                    if (pteer->yfunc != NULL) pteer->yfunc();
+                    continue;
+                }
+                
+                pteer->read_state = PACKETEER_STATE_READ_LENGTH;
+                break;
+                
+            case PACKETEER_STATE_READ_LENGTH:
+                if (pteer->afunc() == 0)
                     return PACKETEER_READ_INCOMPLETE;
                 
                 pteer->rfunc(pteer->ibuf, 1);
                 pteer->to_read = pteer->ibuf[0];
-                if (pteer->to_read > PACKETEER_MAX_PKT_LEN) {          // check the length, but could miss a header this way
+                if (pteer->to_read > PACKETEER_MAX_PKT_LEN) {          // check the length
                     if (pteer->yfunc != NULL) pteer->yfunc();
+                    pteer->read_state = PACKETEER_STATE_READ_HEADER;
                     continue;
                 }
                 
