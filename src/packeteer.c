@@ -21,7 +21,7 @@ void packeteer_init(packeteer_t * pteer, uint8_t addr, packeteer_send_func sfunc
 /* Writes a single packet to the given address */
 uint16_t packeteer_send(packeteer_t * pteer, const void * data, uint16_t len, uint8_t to_addr) {
     if (len == 0 || pteer->sfunc == NULL)               // no zero-length writes allowed
-        return PACKETEER_READ_INCOMPLETE;
+        return 0;
     
     uint8_t to_write, chksum = 0;
     pteer->obuf[0] = PACKETEER_HEADER;
@@ -140,7 +140,7 @@ void packeteer_init(packeteer_t * pteer, packeteer_send_func sfunc,
 
 uint16_t packeteer_send(packeteer_t * pteer, const void * data, uint16_t len) {
     if (len == 0 || pteer->sfunc == NULL)               // no zero-length writes allowed
-        return PACKETEER_READ_INCOMPLETE;
+        return 0;
     
     uint8_t to_write, chksum = 0;
     pteer->obuf[0] = PACKETEER_HEADER;
